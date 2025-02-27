@@ -27,10 +27,21 @@ func RequestPrompt(prompt string) (string, error) {
 	if ollamaURL == "" {
 		return "", fmt.Errorf("OLLAMA_URL environment variable is not set")
 	}
+
+	model := os.Getenv("OLLAMA_MODEL")
+	if model == "" {
+		model = "qwen:1.8b"
+	}
+
+	templatePrompt := os.Getenv("OLLAMA_TEMPLATE_PROMPT")
+	if templatePrompt != "" {
+		prompt = fmt.Sprintf(templatePrompt, prompt)
+	}
+
 	requestBody, err := json.Marshal(OllamaRequest{
-		Model:          "qwen:1.8b",
+		Model:          model,
 		Prompt:         prompt,
-		NumPredictions: 10,
+		NumPredictions: 1,
 		MaxTokens:      100,
 		Temperature:    0.5,
 		TopP:           0.9,
