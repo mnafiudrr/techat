@@ -75,6 +75,11 @@ func processTelegramMessage(chatID int64, text string) {
 		return
 	}
 
+	if command == "ping" {
+		telegram.SendMessage(chatID, "Pong!")
+		return
+	}
+
 	if command != "" {
 		telegram.SendMessage(chatID, "I don't understand that command.")
 		return
