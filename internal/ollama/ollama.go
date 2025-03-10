@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 )
@@ -48,17 +49,20 @@ func RequestPrompt(prompt string) (string, error) {
 		Stream:         false,
 	})
 	if err != nil {
+		log.Println("Error:", err)
 		return "", err
 	}
 
 	resp, err := http.Post(ollamaURL, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
+		log.Println("Error:", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	var response OllamaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		log.Println("Error:", err)
 		return "", err
 	}
 

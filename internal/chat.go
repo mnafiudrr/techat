@@ -1,12 +1,15 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mnafiudrr/techat/internal/ollama"
 	"github.com/mnafiudrr/techat/internal/telegram"
+	"github.com/mnafiudrr/techat/internal/telegram/types"
 )
 
 var workerPool = make(chan struct{}, 50)
@@ -32,12 +35,7 @@ func Chat(c *gin.Context) {
 
 func TelegramWebhook(c *gin.Context) {
 	var request struct {
-		Message struct {
-			Chat struct {
-				ID int64 `json:"id"`
-			} `json:"chat"`
-			Text string `json:"text"`
-		} `json:"message"`
+		types.WebhookRequestType
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -47,7 +45,7 @@ func TelegramWebhook(c *gin.Context) {
 
 	select {
 	case workerPool <- struct{}{}:
-		go processTelegramMessage(request.Message.Chat.ID, request.Message.Text)
+		go processTelegramMessage(request.Message.Chat.ID, *request.Message.Text, request.WebhookRequestType)
 		c.JSON(http.StatusOK, gin.H{"message": "Processing your request asynchronously!", "chat_id": request.Message.Chat.ID, "text": request.Message.Text})
 	default:
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "Server busy, please try again later."})
@@ -66,7 +64,14 @@ func processChat(prompt string) {
 	fmt.Println("Response:", response)
 }
 
-func processTelegramMessage(chatID int64, text string) {
+func processTelegramMessage(chatID int64, text string, request types.WebhookRequestType) {
+	sendBackTheRequest := os.Getenv("SEND_BACK_THE_REQUEST")
+	if sendBackTheRequest == "true" {
+		requestString, _ := json.Marshal(request)
+		text = fmt.Sprintf("```json\n%s\n```", requestString)
+		telegram.SendMessage(chatID, text)
+	}
+
 	defer func() { <-workerPool }()
 
 	command := telegram.GetCommandArguments(text)
